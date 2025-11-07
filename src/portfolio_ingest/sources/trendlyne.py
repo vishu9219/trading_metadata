@@ -1,6 +1,7 @@
 """Trendlyne data source implementation."""
 from __future__ import annotations
 
+import logging
 from typing import Iterable
 
 import requests
@@ -9,6 +10,8 @@ from bs4 import BeautifulSoup
 from ..models import Deal, Holding
 from .base import InvestorSource
 from .utils import parse_date, parse_float, parse_int
+
+LOGGER = logging.getLogger(__name__)
 
 
 class TrendlyneSource(InvestorSource):
@@ -19,12 +22,14 @@ class TrendlyneSource(InvestorSource):
         self.session = session or requests.Session()
 
     def _get_soup(self) -> BeautifulSoup:
+        LOGGER.debug("Requesting Trendlyne page for %s", self.investor)
         response = self.session.get(self.url, timeout=30)
         response.raise_for_status()
         return BeautifulSoup(response.text, "html.parser")
 
     def fetch_holdings(self) -> Iterable[Holding]:
         soup = self._get_soup()
+        LOGGER.debug("Parsing holdings table for %s", self.investor)
         tables = soup.select("table")
         for table in tables:
             header = [th.get_text(strip=True).lower() for th in table.find_all("th")]
@@ -52,6 +57,7 @@ class TrendlyneSource(InvestorSource):
 
     def fetch_deals(self) -> Iterable[Deal]:
         soup = self._get_soup()
+        LOGGER.debug("Parsing deals sections for %s", self.investor)
         for section in soup.find_all("section"):
             title = section.find(["h2", "h3"])
             if not title:

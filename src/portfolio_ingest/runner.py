@@ -13,6 +13,7 @@ from .db import (
     sync_bulk_deals,
     sync_holdings,
 )
+from .logging_utils import configure_logging
 from .models import Deal, Holding
 from .sources import create_source
 
@@ -26,6 +27,7 @@ def gather_data(settings: Settings) -> tuple[List[Holding], List[Deal]]:
     deals: List[Deal] = []
     for investor, url in settings.investor_sources.items():
         source = create_source(investor, url)
+        LOGGER.info("Fetching data for %s", investor)
         try:
             holdings.extend(source.fetch_holdings())
             deals.extend(source.fetch_deals())
@@ -37,13 +39,16 @@ def gather_data(settings: Settings) -> tuple[List[Holding], List[Deal]]:
 def run_ingestion(settings: Settings) -> None:
     """Run the ingestion process."""
 
+    LOGGER.info("Starting ingestion run")
     engine = create_db_engine(settings.database_url)
     ensure_schema(engine)
 
     holdings, deals = gather_data(settings)
+    LOGGER.info("Fetched %d holdings entries and %d deals", len(holdings), len(deals))
     sync_holdings(engine, holdings)
     sync_bulk_deals(engine, deals)
     sync_block_deals(engine, deals)
+    LOGGER.info("Ingestion run complete")
 
 
 def parse_args(args: Iterable[str] | None = None) -> argparse.Namespace:
@@ -58,7 +63,7 @@ def parse_args(args: Iterable[str] | None = None) -> argparse.Namespace:
 
 def main(argv: Iterable[str] | None = None) -> None:
     options = parse_args(argv)
-    logging.basicConfig(level=logging.DEBUG if options.verbose else logging.INFO)
+    configure_logging("DEBUG" if options.verbose else None)
     settings = Settings.load()
     run_ingestion(settings)
 

@@ -23,7 +23,10 @@ from .db import (
     get_or_create_schedule,
     update_schedule,
 )
+from .logging_utils import configure_logging
 from .runner import run_ingestion
+
+configure_logging()
 
 LOGGER = logging.getLogger(__name__)
 
@@ -37,10 +40,13 @@ JOB_ID = "daily-ingestion"
 def _ingestion_job() -> None:
     """Wrapper for running the ingestion pipeline within the scheduler."""
 
+    LOGGER.info("Running scheduled ingestion job")
     try:
         run_ingestion(settings)
     except Exception:  # pragma: no cover - defensive logging
         LOGGER.exception("Scheduled ingestion run failed")
+    else:
+        LOGGER.info("Scheduled ingestion job completed successfully")
 
 
 def _configure_job(schedule: dict[str, Any]) -> None:
@@ -53,8 +59,20 @@ def _configure_job(schedule: dict[str, Any]) -> None:
     )
     if scheduler.get_job(JOB_ID):
         scheduler.reschedule_job(JOB_ID, trigger=trigger)
+        LOGGER.info(
+            "Rescheduled daily ingestion job for %02d:%02d %s",
+            schedule["hour"],
+            schedule["minute"],
+            schedule["timezone"],
+        )
     else:
         scheduler.add_job(_ingestion_job, trigger=trigger, id=JOB_ID, replace_existing=True)
+        LOGGER.info(
+            "Scheduled daily ingestion job for %02d:%02d %s",
+            schedule["hour"],
+            schedule["minute"],
+            schedule["timezone"],
+        )
 
 
 def _format_schedule(schedule: dict[str, Any]) -> str:
@@ -78,21 +96,25 @@ app = FastAPI(title="Investor Holdings", default_response_class=HTMLResponse)
 
 @app.on_event("startup")
 async def startup_event() -> None:
+    LOGGER.info("Starting FastAPI application")
     ensure_schema(engine)
     schedule = get_or_create_schedule(engine)
     _configure_job(schedule)
     if not scheduler.running:
         scheduler.start()
+        LOGGER.info("Scheduler started")
 
 
 @app.on_event("shutdown")
 async def shutdown_event() -> None:
     if scheduler.running:
         scheduler.shutdown()
+        LOGGER.info("Scheduler shut down")
 
 
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request) -> HTMLResponse:
+    LOGGER.debug("Rendering dashboard view")
     holdings = fetch_holdings_view(engine)
     bulk = fetch_deals_view(engine, bulk_deals)
     block = fetch_deals_view(engine, block_deals)
@@ -112,6 +134,7 @@ async def dashboard(request: Request) -> HTMLResponse:
 
 @app.get("/schedule", response_class=HTMLResponse)
 async def show_schedule(request: Request) -> HTMLResponse:
+    LOGGER.debug("Rendering schedule view")
     schedule = get_or_create_schedule(engine)
     updated = request.query_params.get("updated")
     return templates.TemplateResponse(
@@ -132,6 +155,7 @@ async def update_schedule_view(request: Request, time: str = Form(...)) -> HTMLR
         hour, minute = _parse_time(time)
     except ValueError as exc:
         schedule = get_or_create_schedule(engine)
+        LOGGER.warning("Invalid schedule submitted: %s", exc)
         return templates.TemplateResponse(
             "schedule.html",
             {
@@ -146,6 +170,7 @@ async def update_schedule_view(request: Request, time: str = Form(...)) -> HTMLR
 
     schedule = update_schedule(engine, hour, minute)
     _configure_job(schedule)
+    LOGGER.info("Updated schedule to %02d:%02d %s", hour, minute, schedule["timezone"])
     return RedirectResponse(url="/schedule?updated=1", status_code=status.HTTP_303_SEE_OTHER)
 
 

@@ -1,6 +1,7 @@
 """Screener.in data source implementation."""
 from __future__ import annotations
 
+import logging
 from typing import Iterable
 
 import requests
@@ -9,6 +10,9 @@ from bs4 import BeautifulSoup
 from ..models import Deal, Holding
 from .base import InvestorSource
 from .utils import parse_date, parse_float, parse_int
+
+LOGGER = logging.getLogger(__name__)
+
 
 class ScreenerSource(InvestorSource):
     """Scraper for screener.in investor pages."""
@@ -20,12 +24,14 @@ class ScreenerSource(InvestorSource):
         self.session = session or requests.Session()
 
     def _get_soup(self) -> BeautifulSoup:
+        LOGGER.debug("Requesting Screener page for %s", self.investor)
         response = self.session.get(self.url, timeout=30)
         response.raise_for_status()
         return BeautifulSoup(response.text, "html.parser")
 
     def fetch_holdings(self) -> Iterable[Holding]:
         soup = self._get_soup()
+        LOGGER.debug("Parsing holdings table for %s", self.investor)
         tables = soup.find_all("table")
         for table in tables:
             header = [th.get_text(strip=True).lower() for th in table.find_all("th")]
@@ -56,6 +62,7 @@ class ScreenerSource(InvestorSource):
 
     def fetch_deals(self) -> Iterable[Deal]:
         soup = self._get_soup()
+        LOGGER.debug("Parsing deals tables for %s", self.investor)
         for title in soup.find_all("h2"):
             heading = title.get_text(strip=True).lower()
             if "bulk deals" in heading or "block deals" in heading:

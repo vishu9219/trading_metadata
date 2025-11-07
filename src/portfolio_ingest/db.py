@@ -1,6 +1,7 @@
 """Database integration utilities."""
 from __future__ import annotations
 
+import logging
 from contextlib import contextmanager
 from datetime import date, datetime
 from typing import Iterable, Iterator
@@ -27,6 +28,8 @@ from .models import Deal, Holding
 
 
 metadata = MetaData()
+
+LOGGER = logging.getLogger(__name__)
 
 investors = Table(
     "investors",
@@ -122,6 +125,7 @@ UNIQUE_CONSTRAINTS: dict[str, str] = {
 def create_db_engine(database_url: str) -> Engine:
     """Create a SQLAlchemy engine."""
 
+    LOGGER.debug("Creating database engine")
     return create_engine(database_url, future=True, pool_pre_ping=True)
 
 
@@ -136,6 +140,7 @@ def session(engine: Engine) -> Iterator[Engine]:
 def ensure_schema(engine: Engine) -> None:
     """Create tables if they do not exist."""
 
+    LOGGER.debug("Ensuring database schema is present")
     metadata.create_all(engine)
 
 
@@ -194,6 +199,11 @@ def sync_holdings(engine: Engine, holdings_data: Iterable[Holding]) -> None:
         to_remove = [row.id for row in existing if (row.investor_id, row.stock_id) not in to_keep]
         if to_remove:
             conn.execute(delete(holdings).where(holdings.c.id.in_(to_remove)))
+    LOGGER.info(
+        "Synchronized %d holdings rows (%d removed)",
+        len(grouped),
+        len(to_remove),
+    )
 
 
 def _sync_deals(engine: Engine, deals_data: Iterable[Deal], table: Table, constraint: str) -> None:
@@ -233,6 +243,12 @@ def _sync_deals(engine: Engine, deals_data: Iterable[Deal], table: Table, constr
         ]
         if to_remove:
             conn.execute(delete(table).where(table.c.id.in_(to_remove)))
+    LOGGER.info(
+        "Synchronized %d %s rows (%d removed)",
+        len(grouped),
+        table.name,
+        len(to_remove),
+    )
 
 
 def sync_bulk_deals(engine: Engine, deals_data: Iterable[Deal]) -> None:
@@ -252,6 +268,7 @@ def sync_block_deals(engine: Engine, deals_data: Iterable[Deal]) -> None:
 def fetch_holdings_view(engine: Engine) -> list[dict[str, object]]:
     """Return holdings joined with investor and stock metadata for presentation."""
 
+    LOGGER.debug("Loading holdings view data")
     with engine.connect() as conn:
         stmt = (
             select(
@@ -275,6 +292,7 @@ def fetch_holdings_view(engine: Engine) -> list[dict[str, object]]:
 def fetch_deals_view(engine: Engine, table: Table) -> list[dict[str, object]]:
     """Return deal records joined with investor and stock metadata for presentation."""
 
+    LOGGER.debug("Loading %s view data", table.name)
     with engine.connect() as conn:
         stmt = (
             select(
@@ -298,6 +316,7 @@ def fetch_deals_view(engine: Engine, table: Table) -> list[dict[str, object]]:
 def get_or_create_schedule(engine: Engine) -> dict[str, int | str]:
     """Fetch the current ingestion schedule, seeding defaults when missing."""
 
+    LOGGER.debug("Fetching ingestion schedule")
     with session(engine) as conn:
         row = conn.execute(select(ingest_schedule)).first()
         if row is not None:
@@ -316,12 +335,24 @@ def get_or_create_schedule(engine: Engine) -> dict[str, int | str]:
         )
         stmt = stmt.on_conflict_do_nothing()
         conn.execute(stmt)
+        LOGGER.info(
+            "Seeded default schedule %02d:%02d %s",
+            DEFAULT_SCHEDULE["hour"],
+            DEFAULT_SCHEDULE["minute"],
+            DEFAULT_SCHEDULE["timezone"],
+        )
         return dict(DEFAULT_SCHEDULE)
 
 
 def update_schedule(engine: Engine, hour: int, minute: int, timezone: str = "UTC") -> dict[str, int | str]:
     """Persist a new ingestion schedule."""
 
+    LOGGER.debug(
+        "Persisting schedule change to %02d:%02d %s",
+        hour,
+        minute,
+        timezone,
+    )
     with session(engine) as conn:
         stmt = pg_insert(ingest_schedule).values(
             id=1,
