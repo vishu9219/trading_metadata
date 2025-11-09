@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Holdings Overview{% endblock %}
+
+{% block content %}
+  <div class="card">
+    <h2 style="margin-top: 0;">Current Schedule</h2>
+    <p class="status">Daily ingestion runs at <strong>{{ schedule_time }} {{ schedule_timezone }}</strong>.</p>
+    <p class="status">Use the schedule page to adjust when the scraper executes.</p>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top: 0;">Holdings</h2>
+    {% if holdings %}
+      <table>
+        <thead>
+          <tr>
+            <th>Ticker</th>
+            <th>Investor</th>
+            <th>Percent Holding</th>
+            <th>Shares</th>
+            <th>Reported Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in holdings %}
+            <tr>
+              <td>{{ row.ticker }}</td>
+              <td>{{ row.investor }}</td>
+              <td>{% if row.percent_holding is not none %}{{ '%.2f'|format(row.percent_holding) }}%{% else %}-{% endif %}</td>
+              <td>{% if row.shares is not none %}{{ row.shares }}{% else %}-{% endif %}</td>
+              <td>{% if row.reported_date %}{{ row.reported_date }}{% else %}-{% endif %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>No holdings have been ingested yet.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top: 0;">Bulk Deals (Buy)</h2>
+    {% if bulk_deals %}
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Ticker</th>
+            <th>Investor</th>
+            <th>Quantity</th>
+            <th>Price</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in bulk_deals %}
+            <tr>
+              <td>{{ row.deal_date }}</td>
+              <td>{{ row.ticker }}</td>
+              <td>{{ row.investor }}</td>
+              <td>{% if row.quantity is not none %}{{ row.quantity }}{% else %}-{% endif %}</td>
+              <td>{% if row.price is not none %}₹{{ '%.2f'|format(row.price) }}{% else %}-{% endif %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>No bulk deals have been recorded.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top: 0;">Block Deals (Buy)</h2>
+    {% if block_deals %}
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Ticker</th>
+            <th>Investor</th>
+            <th>Quantity</th>
+            <th>Price</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in block_deals %}
+            <tr>
+              <td>{{ row.deal_date }}</td>
+              <td>{{ row.ticker }}</td>
+              <td>{{ row.investor }}</td>
+              <td>{% if row.quantity is not none %}{{ row.quantity }}{% else %}-{% endif %}</td>
+              <td>{% if row.price is not none %}₹{{ '%.2f'|format(row.price) }}{% else %}-{% endif %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>No block deals have been recorded.</p>
+    {% endif %}
+  </div>
+{% endblock %}

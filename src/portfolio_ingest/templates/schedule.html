@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Schedule Settings{% endblock %}
+
+{% block content %}
+  <div class="card">
+    <h2 style="margin-top: 0;">Daily Cron Schedule</h2>
+    <p class="status">The ingestion job currently runs at <strong>{{ schedule_time }} {{ schedule_timezone }}</strong>.</p>
+    {% if updated %}
+      <div class="alert alert-success">Schedule updated successfully.</div>
+    {% endif %}
+    {% if error %}
+      <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+    <form method="post" style="display: flex; flex-direction: column; gap: 1rem; max-width: 320px;">
+      <label for="time">Daily trigger time</label>
+      <input
+        id="time"
+        name="time"
+        type="time"
+        value="{{ schedule_time }}"
+        required
+        style="padding: 0.5rem; font-size: 1rem; border: 1px solid #d1d5db; border-radius: 6px;"
+      />
+      <button class="button" type="submit">Update schedule</button>
+    </form>
+    <p class="status">Times are stored in {{ schedule_timezone }}.</p>
+  </div>
+{% endblock %}
