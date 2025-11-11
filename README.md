@@ -52,6 +52,14 @@ Set the following environment variables before running the job:
 - `PORTFOLIO_INGEST_DATABASE_URL`: SQLAlchemy connection URL for PostgreSQL (e.g. `postgresql+psycopg://user:password@localhost:5432/portfolio`).
 - `PORTFOLIO_INGEST_INVESTORS` (optional): newline separated list of `Name|URL` pairs overriding the default investor list bundled with the project.
 
+Alternatively, you can rely on the bundled environment files to populate these values. The loader inspects the
+`PORTFOLIO_INGEST_ENV` variable (defaulting to `local`) and reads matching `.env.<environment>` files when present:
+
+- `.env.local` &mdash; pre-populated with a localhost PostgreSQL configuration (`localhost:5432`, `vishal/vishal`).
+- `.env.prod` &mdash; template to record production credentials.
+
+Each file exposes discrete database settings (`PORTFOLIO_INGEST_DB_*`) and the loader assembles a SQLAlchemy URL automatically.
+
 ### Running the web app & scheduler
 
 Install dependencies and start the FastAPI application with Uvicorn:
