@@ -13,6 +13,35 @@ from .utils import parse_date, parse_float, parse_int
 
 LOGGER = logging.getLogger(__name__)
 
+DEFAULT_HEADERS = {
+    "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+    "accept-language": "en-US,en;q=0.9,hi;q=0.8",
+    "cache-control": "max-age=0",
+    "priority": "u=0, i",
+    "referer": "https://trendlyne.com/equity/insider-trading-sast/custom/?query=Massachusetts%20Institute%20of%20Technology%20&%20PACs",
+    "sec-ch-ua": '"Google Chrome";v="141", "Not?A_Brand";v="8", "Chromium";v="141"',
+    "sec-ch-ua-mobile": "?1",
+    "sec-ch-ua-platform": '"Android"',
+    "sec-fetch-dest": "document",
+    "sec-fetch-mode": "navigate",
+    "sec-fetch-site": "same-origin",
+    "sec-fetch-user": "?1",
+    "upgrade-insecure-requests": "1",
+    "user-agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36",
+}
+
+DEFAULT_COOKIES = {
+    "_ga": "GA1.1.573022403.1733077069",
+    "_clck": "19s8hfw|2|frc|0|1796",
+    "_ga_8MLP1KVCSX": "GS1.1.1733077528.1.1.1733077621.0.0.0",
+    "_ga_J2YW7VJGYP": "GS1.1.1733250768.3.0.1733250768.0.0.0",
+    "TL_USER_COUNTRY": "IND",
+    "_gcl_au": "1.1.788577265.1755862336",
+    "csrftoken": "3j7IVBDJ7QeJXgPRrmbCSo1mWgw9elb3jxlB86NyrlNbwxa2nuMsPw9hoRefnCE9",
+    "g_state": '{"i_l":0,"i_ll":1762888622928,"i_b":"E0GqlfJd6pc+RyFEWJlulPTFnjLfEhGqK5cQ50TuXkU"}',
+    "_ga_7F29Q8ZGH0": "GS2.1.s1762888100$o35$g1$t1762888622$j60$l0$h0",
+}
+
 
 class TrendlyneSource(InvestorSource):
     """Scraper for Trendlyne superstar pages."""
@@ -20,6 +49,9 @@ class TrendlyneSource(InvestorSource):
     def __init__(self, investor: str, url: str, session: requests.Session | None = None) -> None:
         super().__init__(investor, url)
         self.session = session or requests.Session()
+        # Update the session with headers/cookies required to avoid bot detection.
+        self.session.headers.update(DEFAULT_HEADERS)
+        self.session.cookies.update(DEFAULT_COOKIES)
 
     def _get_soup(self) -> BeautifulSoup:
         LOGGER.debug("Requesting Trendlyne page for %s", self.investor)
